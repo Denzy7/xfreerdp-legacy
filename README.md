@@ -79,13 +79,86 @@ git tag v2.11.7-2 && git push origin v2.11.7-2
 The `.deb` files are named per distro, e.g.
 `xfreerdp-legacy_2.11.7-2+debian13_amd64.deb`; install the one for your release.
 
-## Connect
+## Usage
+
+### When to use it
+
+Use `xfreerdp-legacy` only for servers that modern clients can't reach, such
+as Windows Server 2008 R2 / Windows 7 without TLS 1.2. For Windows 10/11 and
+current servers, use your distro's FreeRDP 3 (`xfreerdp3`): it's maintained
+and gets security fixes. The options below work with both.
+
+### Connect
 
 ```sh
-xfreerdp-legacy /v:<host> /u:<user> /sec:nla /dynamic-resolution +clipboard
+xfreerdp-legacy /v:<host> /u:<user> /dynamic-resolution +clipboard
 ```
 
-If the handshake fails, add `/log-level:DEBUG`.
+It asks for the password; don't put `/p:` on the command line, where it ends
+up in your shell history and the process list. Add `/d:<domain>` for a domain
+account.
+
+Useful options:
+
+| Option | Effect |
+|---|---|
+| `/dynamic-resolution` | Resize the remote desktop with the window |
+| `/f` | Fullscreen (Ctrl+Alt+Enter toggles) |
+| `+clipboard` | Shared clipboard, both directions |
+| `/sound` | Play remote audio locally (otherwise it's discarded) |
+| `/microphone` | Send local microphone to the server |
+| `/drive:home,$HOME` | Share a local folder, shown as a drive on the server |
+| `/sec:nla` | Require NLA (CredSSP) login; `/sec:tls` for servers without it |
+| `/cert:name:<name>` | Expect this certificate name, e.g. the server's computer name when connecting by IP |
+| `/log-level:DEBUG` | Verbose output for troubleshooting |
+
+Use `/`-style options only (`/version`, not `--version`). The wrapper already
+passes `/tls-seclevel:0 /cert:tofu`, and FreeRDP rejects command lines that
+mix `/` and `--` styles.
+
+### Certificates
+
+`/cert:tofu` accepts the server's certificate on the first connection and
+saves it. If it changes later, the connection is refused: check why before
+trusting it. If the change is expected (server reinstalled or a new
+certificate), forget the old one and connect again:
+
+- `xfreerdp-legacy` (FreeRDP 2): delete the host's line from
+  `~/.config/freerdp/known_hosts2`, e.g. `sed -i '/^<host> 3389 /d' ~/.config/freerdp/known_hosts2`
+- `xfreerdp3` (FreeRDP 3): delete `~/.config/freerdp/server/<host>_3389.pem`
+
+Windows uses a self-signed certificate named after the computer, so
+connecting by IP prints a "certificate name mismatch" warning. That's
+expected; `/cert:name:<computer-name>` silences it.
+
+### Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| Connection times out | Firewall on the server drops port 3389, or the host is down |
+| Connection refused | Remote Desktop isn't enabled on the server (see below) |
+| Handshake / TLS error | Retry with `/log-level:DEBUG`; for very old servers try `/sec:tls` or `/sec:rdp` |
+| Login fails right away | Windows refuses RDP for accounts with a blank password; set one |
+| "Not authorized for remote login" | Add the account to the *Remote Desktop Users* group on the server |
+| `ERRCONNECT_CONNECT_CANCELLED` on exit | Normal: you closed the window |
+| Kerberos errors with `ATHENA.MIT.EDU` (FreeRDP 3) | FreeRDP tries Kerberos first and falls back to NTLM. `'/auth-pkg-list:!kerberos'` skips it (quote the `!` in bash) |
+
+### Enabling Remote Desktop on Windows
+
+On the Windows machine, in an Administrator Command Prompt (Remote Desktop
+needs Pro, Enterprise or Education, or a Server edition):
+
+```bat
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
+sc config TermService start= auto
+netsh advfirewall firewall add rule name="RDP 3389" dir=in action=allow protocol=TCP localport=3389 profile=any
+net stop TermService /y
+net start TermService
+```
+
+`netstat -an | find ":3389"` should then show `LISTENING`. Stripped-down
+Windows builds (e.g. tiny10) often ship with TermService disabled and the
+built-in firewall rules removed; the commands above handle both.
 
 ## Cleanup
 
