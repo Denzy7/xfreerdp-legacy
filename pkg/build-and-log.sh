@@ -41,10 +41,14 @@ else ROOT=(false)
 fi
 
 finish() {
+  local rc=$?
   section "Summary"
   printf '%s\n' "${RESULTS[@]}"
   echo
   echo "Log saved to: $LOG"
+  # Non-zero if any check failed, so CI notices
+  if (( rc == 0 )) && printf '%s\n' "${RESULTS[@]}" | grep -q ": FAIL"; then exit 1; fi
+  exit "$rc"
 }
 trap finish EXIT
 

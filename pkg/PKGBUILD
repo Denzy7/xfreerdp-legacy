@@ -18,8 +18,9 @@ depends=('glibc' 'libx11' 'libxext' 'libxkbfile' 'libxcursor' 'libxrandr' 'libxi
          'libxinerama' 'libxrender' 'libxfixes' 'libpulse' 'cairo' 'libusb'
          'systemd-libs')
 makedepends=('cmake' 'perl' 'libxdamage' 'libxtst' 'libxv')
-# LTO bytecode inside the static OpenSSL archives is fragile; keep it plain
-options=('!lto')
+# LTO bytecode inside the static OpenSSL archives is fragile; keep it plain.
+# No separate -debug package.
+options=('!lto' '!debug')
 source=("https://github.com/openssl/openssl/releases/download/OpenSSL_${_opensslver//./_}/openssl-$_opensslver.tar.gz"
         "freerdp-$pkgver.tar.gz::https://github.com/FreeRDP/FreeRDP/archive/refs/tags/$pkgver.tar.gz"
         "rdp-legacy-build.sh")

@@ -1,0 +1,119 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deb:
+    name: deb (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: debian12, image: 'debian:bookworm' }
+          - { name: debian13, image: 'debian:trixie' }
+          - { name: ubuntu24.04, image: 'ubuntu:24.04' }
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same logged build + install + smoke test as on a real machine; exits
+      # non-zero if any check fails. Runs as root, so no doas/sudo needed.
+      - name: Build, install and test
+        working-directory: pkg
+        run: ./build-and-log.sh --install-deps --install
+
+      # Same file name on every distro; tag it so release assets don't collide
+      - name: Name package for distro
+        working-directory: pkg
+        run: |
+          f=$(ls xfreerdp-legacy_*.deb)
+          mv "$f" "${f%_*}+${{ matrix.name }}_${f##*_}"
+          ls -l *.deb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkg-${{ matrix.name }}
+          path: pkg/*.deb
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: log-${{ matrix.name }}
+          path: pkg/xfreerdp-legacy-*.log
+
+  arch:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          source pkg/PKGBUILD
+          pacman -Syu --noconfirm --needed "${depends[@]}" "${makedepends[@]}"
+
+      # makepkg refuses to run as root
+      - name: Build
+        run: |
+          useradd -m builder
+          cp -r pkg /home/builder/pkg
+          chown -R builder: /home/builder/pkg
+          su builder -c 'cd ~/pkg && makepkg --noconfirm'
+
+      - name: Install and test
+        run: |
+          pacman -U --noconfirm /home/builder/pkg/xfreerdp-legacy-*.pkg.tar.zst
+          bin=/opt/rdp-legacy/bin/xfreerdp
+          if readelf -d "$bin" | grep -E 'NEEDED.*lib(ssl|crypto)\.so'; then exit 1; fi
+          [[ $(grep -ac 'OpenSSL 1\.1\.1[a-z]*  ' "$bin") == 1 ]]
+          # FreeRDP 2 opens the X display before --version; no display here,
+          # so this message means the binary loaded and started
+          out=$(xfreerdp-legacy --version 2>&1) || grep -q "failed to open display" <<<"$out"
+          echo "$out"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkg-arch
+          path: /home/builder/pkg/xfreerdp-legacy-*.pkg.tar.zst
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [deb, arch]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pkg-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -l dist
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes

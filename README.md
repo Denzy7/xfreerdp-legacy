@@ -19,6 +19,7 @@ the system `freerdp` or `openssl`.
 | `pkg/cleanup.sh` | Removes build files, build deps and/or the installed package |
 | `pkg/README-deb.txt` | README shipped inside the Debian zip |
 | `make-zip.sh` | Bundles the Debian builder and sources into `dist/xfreerdp-legacy-deb.zip` |
+| `.github/workflows/build.yml` | CI: builds and tests the `.deb`s and the Arch package, releases on tags |
 
 ## What the packages contain
 
@@ -58,6 +59,25 @@ The zip includes the source tarballs, so only `apt` needs internet there.
 On a headless machine the run checks report "no X display": FreeRDP 2 opens
 the display before handling `--version`, so that message means the binary
 loaded and started.
+
+## CI
+
+`.github/workflows/build.yml` runs on every push to `main` and on pull requests:
+
+- **deb**: `build-and-log.sh --install-deps --install` in Debian 12, Debian 13
+  and Ubuntu 24.04 containers. It builds, installs and smoke-tests the package,
+  and fails if any check fails. Packages and logs are uploaded as artifacts.
+- **arch**: `makepkg` in `archlinux:base-devel`, then installs the package and
+  checks there's no shared OpenSSL and exactly one bundled copy.
+
+Pushing a `v*` tag also attaches all packages to a GitHub release:
+
+```sh
+git tag v2.11.7-2 && git push origin v2.11.7-2
+```
+
+The `.deb` files are named per distro, e.g.
+`xfreerdp-legacy_2.11.7-2+debian13_amd64.deb`; install the one for your release.
 
 ## Connect
 
