@@ -18,6 +18,7 @@ the system `freerdp` or `openssl`.
 | `pkg/build-and-log.sh` | Runs `mkdeb.sh` plus checks, logging everything to one file |
 | `pkg/cleanup.sh` | Removes build files, build deps and/or the installed package |
 | `pkg/README-deb.txt` | README shipped inside the Debian zip |
+| `windows/enable-rdp.bat` | Enables Remote Desktop on a Windows machine (run as Administrator) |
 | `make-zip.sh` | Bundles the Debian builder and sources into `dist/xfreerdp-legacy-deb.zip` |
 | `.github/workflows/build.yml` | CI: builds and tests the `.deb`s and the Arch package, releases on tags |
 
@@ -145,8 +146,21 @@ expected; `/cert:name:<computer-name>` silences it.
 
 ### Enabling Remote Desktop on Windows
 
-On the Windows machine, in an Administrator Command Prompt (Remote Desktop
-needs Pro, Enterprise or Education, or a Server edition):
+Remote Desktop needs Windows Pro, Enterprise or Education, or a Server
+edition.
+
+Copy [`windows/enable-rdp.bat`](windows/enable-rdp.bat) to the Windows
+machine, right-click it and choose **Run as administrator**. It:
+
+1. allows Remote Desktop connections in the registry,
+2. sets TermService to start automatically (and its helper services to start
+   on demand),
+3. adds a firewall rule for TCP 3389 on all network profiles and makes sure
+   the firewall is on,
+4. restarts TermService and reports whether port 3389 is listening.
+
+Without a way to copy files (e.g. a VM console that can't paste), type the
+core of it in an Administrator Command Prompt instead:
 
 ```bat
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
