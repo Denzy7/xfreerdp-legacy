@@ -33,7 +33,7 @@ jobs:
     env:
       DEBIAN_FRONTEND: noninteractive
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Same logged build + install + smoke test as on a real machine; exits
       # non-zero if any check fails. Runs as root, so no doas/sudo needed.
@@ -49,13 +49,13 @@ jobs:
           mv "$f" "${f%_*}+${{ matrix.name }}_${f##*_}"
           ls -l *.deb
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pkg-${{ matrix.name }}
           path: pkg/*.deb
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: log-${{ matrix.name }}
@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     container: archlinux:base-devel
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build deps
         run: |
@@ -91,7 +91,7 @@ jobs:
           out=$(xfreerdp-legacy --version 2>&1) || grep -q "failed to open display" <<<"$out"
           echo "$out"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pkg-arch
           path: /home/builder/pkg/xfreerdp-legacy-*.pkg.tar.zst
@@ -104,7 +104,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: pkg-*
           path: dist
