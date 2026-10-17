@@ -86,9 +86,10 @@ jobs:
           bin=/opt/rdp-legacy/bin/xfreerdp
           if readelf -d "$bin" | grep -E 'NEEDED.*lib(ssl|crypto)\.so'; then exit 1; fi
           [[ $(grep -ac 'OpenSSL 1\.1\.1[a-z]*  ' "$bin") == 1 ]]
-          # FreeRDP 2 opens the X display before --version; no display here,
+          # /version, not --version: the wrapper's /-style options can't mix
+          # with --style ones. FreeRDP 2 opens the X display before /version; no display here,
           # so this message means the binary loaded and started
-          out=$(xfreerdp-legacy --version 2>&1) || grep -q "failed to open display" <<<"$out"
+          out=$(xfreerdp-legacy /version 2>&1) || grep -q "failed to open display" <<<"$out"
           echo "$out"
 
       - uses: actions/upload-artifact@v7

@@ -133,11 +133,13 @@ else
   result "static openssl" "FAIL, found $copies OpenSSL 1.1.1 copies in xfreerdp (want 1)"
 fi
 
-# FreeRDP 2's X11 client opens the display before handling --version, so on a
+# /version, not --version: the wrapper prepends /-style options and FreeRDP
+# rejects mixing the two styles.
+# FreeRDP 2's X11 client opens the display before handling /version, so on a
 # headless box "failed to open display" means the binary loaded and started fine.
 smoke() {
   local out rc
-  out="$("$@" --version 2>&1)"; rc=$?
+  out="$("$@" /version 2>&1)"; rc=$?
   echo "$out"
   if (( rc == 0 )); then echo "ok"
   elif grep -q "failed to open display" <<<"$out"; then echo "ok (no X display; binary loads and starts)"

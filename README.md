@@ -57,7 +57,7 @@ copy `dist/xfreerdp-legacy-deb.zip` over, unzip it and follow its `README.txt`.
 The zip includes the source tarballs, so only `apt` needs internet there.
 
 On a headless machine the run checks report "no X display": FreeRDP 2 opens
-the display before handling `--version`, so that message means the binary
+the display before handling `/version`, so that message means the binary
 loaded and started.
 
 ## CI
