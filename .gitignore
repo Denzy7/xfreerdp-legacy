@@ -1,0 +1,16 @@
+# make-zip.sh output and download cache
+/dist/
+
+# Build logs from build-and-log.sh (contain host details)
+*.log
+
+# Debian build tree and output (mkdeb.sh)
+build-deb/
+*.deb
+.build-deps-installed
+
+# makepkg output
+/pkg/src/
+/pkg/pkg/
+*.pkg.tar.*
+*.tar.gz

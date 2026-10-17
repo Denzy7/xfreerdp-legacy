@@ -1,0 +1,41 @@
+# FreeRDP 2.11.7 with OpenSSL 1.1.1w linked in statically, for legacy RDP
+# servers (e.g. Windows Server 2008 R2 with TLS 1.0 only).
+#
+# Installs to /opt/rdp-legacy, so it never clashes with the system freerdp or
+# openssl. Launch via /usr/bin/xfreerdp-legacy.
+#
+# Build: cd pkg && makepkg -si
+
+pkgname=xfreerdp-legacy
+pkgver=2.11.7
+_opensslver=1.1.1w
+pkgrel=2
+pkgdesc="FreeRDP 2 X11 client with static OpenSSL 1.1.1 for legacy (TLS 1.0) RDP servers"
+arch=('x86_64')
+url="https://www.freerdp.com/"
+license=('Apache-2.0' 'OpenSSL')
+depends=('glibc' 'libx11' 'libxext' 'libxkbfile' 'libxcursor' 'libxrandr' 'libxi'
+         'libxinerama' 'libxrender' 'libxfixes' 'libpulse' 'cairo' 'libusb'
+         'systemd-libs')
+makedepends=('cmake' 'perl' 'libxdamage' 'libxtst' 'libxv')
+# LTO bytecode inside the static OpenSSL archives is fragile; keep it plain
+options=('!lto')
+source=("https://github.com/openssl/openssl/releases/download/OpenSSL_${_opensslver//./_}/openssl-$_opensslver.tar.gz"
+        "freerdp-$pkgver.tar.gz::https://github.com/FreeRDP/FreeRDP/archive/refs/tags/$pkgver.tar.gz"
+        "rdp-legacy-build.sh")
+sha256sums=('cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8'
+            '22dbeeaad065e93f152d70e04ec8eeab08aa32c406a96be64f252526623625a4'
+            'SKIP')
+
+build() {
+  bash "$srcdir/rdp-legacy-build.sh" build \
+    "$srcdir/openssl-$_opensslver" "$srcdir/FreeRDP-$pkgver"
+}
+
+package() {
+  bash "$srcdir/rdp-legacy-build.sh" install \
+    "$srcdir/openssl-$_opensslver" "$srcdir/FreeRDP-$pkgver" "$pkgdir"
+
+  install -Dm644 "$srcdir/openssl-$_opensslver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE.openssl"
+  install -Dm644 "$srcdir/FreeRDP-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE.freerdp"
+}
